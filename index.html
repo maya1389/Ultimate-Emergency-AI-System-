@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Emergency AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;}
+body{background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:white;overflow-x:hidden;}
+header{padding:20px;text-align:center;font-size:26px;font-weight:bold;background: rgba(0,0,0,0.6);box-shadow:0 5px 15px rgba(0,0,0,0.3);}
+.container{display:flex;flex-wrap:wrap;gap:20px;padding:20px;justify-content:center;}
+.panel{flex:1 1 500px;background: rgba(255,255,255,0.07);padding:25px;border-radius:15px;box-shadow:0 0 20px rgba(0,0,0,0.5);transition: transform 0.3s;}
+.panel:hover{transform: scale(1.02);}
+h3{margin-bottom:15px;text-align:center;}
+select,button{padding:10px 15px;margin:5px 0;border:none;border-radius:8px;font-size:14px;}
+button{background:#ff4b2b;color:white;cursor:pointer;transition:0.3s;}
+button:hover{background:#ff416c;}
+.result-box{margin-top:15px;background: rgba(0,0,0,0.4);padding:15px;border-radius:10px;}
+.priority{font-weight:bold;font-size:18px;}
+.critical{color:red;}
+.high{color:orange;}
+.medium{color:yellow;}
+.low{color:#00ffcc;}
+.meter{height:20px;background:#333;border-radius:10px;overflow:hidden;margin-top:10px;}
+.meter-fill{height:100%;width:0%;background:red;transition:0.5s;}
+.dashboard-table{width:100%;margin-top:10px;border-collapse: collapse;}
+.dashboard-table th,.dashboard-table td{padding:6px;border-bottom:1px solid rgba(255,255,255,0.2);font-size:12px;}
+canvas{width:100%;height:150px;margin-top:15px;border-radius:10px;background:rgba(0,0,0,0.2);}
+footer{margin-top:20px;text-align:center;font-size:12px;opacity:0.6;}
+.heatmap-dot{position:absolute;width:12px;height:12px;border-radius:50%;opacity:0.6;transition:all 0.5s;}
+#heatmapCanvas{position:relative;width:100%;height:200px;background:rgba(0,0,0,0.2);border-radius:10px;margin-top:15px;}
+.alert{position:absolute;top:10px;right:10px;padding:10px 15px;background:red;color:white;font-weight:bold;border-radius:8px;opacity:0;transition:0.5s;}
+</style>
+</head>
+<body>
+
+<header>🌐 Ultimate Emergency AI System</header>
+
+<div class="container">
+
+<div class="panel">
+<h3>Language & Recording</h3>
+<select id="languageSelect" onchange="changeLanguage()">
+<option value="en-US">English</option>
+<option value="tr-TR">Türkçe</option>
+<option value="fa-IR">فارسی</option>
+<option value="fr-FR">Français</option>
+<option value="hi-IN">Hindi</option>
+<option value="es-ES">Spanish</option>
+<option value="ar-SA">Arabic</option>
+<option value="it-IT">Italian</option>
+<option value="zh-CN">Chinese</option>
+<option value="ru-RU">Russian</option>
+<option value="ko-KR">Korean</option>
+<option value="ja-JP">Japanese</option>
+<option value="de-DE">German</option>
+<option value="pt-PT">Portuguese</option>
+</select>
+<br>
+<button onclick="startRecognition()">🎤 Start</button>
+<button onclick="stopRecognition()">⏹ Stop</button>
+<div class="result-box">
+<p><strong>Transcript:</strong></p><p id="transcript"></p>
+<p><strong>Emotion:</strong> <span id="emotion"></span></p>
+<p><strong>Condition:</strong> <span id="condition"></span></p>
+<p><strong>Vulnerability:</strong> <span id="vulnerability"></span></p>
+<p><strong>Urgency Score:</strong> <span id="score"></span></p>
+<p class="priority">Priority: <span id="priority"></span></p>
+<p><strong>Confidence:</strong> <span id="confidence"></span></p>
+<div class="meter"><div class="meter-fill" id="stressMeter"></div></div>
+<canvas id="stressGraph"></canvas>
+<p><strong>Heatmap (Critical Calls):</strong></p>
+<div id="heatmapCanvas"></div>
+<p><strong>AI Response:</strong></p><p id="response"></p>
+<button onclick="speakResponse()">🔊 Speak Response</button>
+</div>
+</div>
+
+<div class="panel">
+<h3>Live Emergency Dashboard</h3>
+<table class="dashboard-table">
+<thead>
+<tr>
+<th>ID</th><th>Emotion</th><th>Condition</th><th>Vulnerability</th><th>Urgency</th><th>Score</th><th>Confidence</th>
+</tr>
+</thead>
+<tbody id="dashboardBody"></tbody>
+</table>
+</div>
+
+</div>
+
+<div class="alert" id="emergencyAlert">⚠️ Critical Call Detected!</div>
+
+<footer>International Disaster AI Demo – Ultimate Prototype</footer>
+
+<script>
+// Variables
+let recognition,currentLang="en-US",callID=1,stressHistory=[],heatmapContainer=document.getElementById('heatmapCanvas');
+
+// Initialize recognition
+function initRecognition(){
+if(!('webkitSpeechRecognition' in window)){alert("Use Chrome."); return;}
+recognition=new webkitSpeechRecognition();
+recognition.continuous=true;recognition.interimResults=false;
+recognition.lang=currentLang;
+recognition.onresult=function(event){
+const text=event.results[event.results.length-1][0].transcript.toLowerCase();
+document.getElementById("transcript").innerText=text;
+analyzeCall(text);
+}
+}
+function changeLanguage(){currentLang=document.getElementById("languageSelect").value;initRecognition();}
+function startRecognition(){if(!recognition)initRecognition();recognition.start();}
+function stopRecognition(){recognition.stop();}
+
+// Analyze call
+function analyzeCall(text){
+let emotionalIntensity=Math.floor(Math.random()*40);
+let keywordSeverity=Math.floor(Math.random()*30);
+let acousticStress=Math.floor(Math.random()*30);
+let totalScore=emotionalIntensity+keywordSeverity+acousticStress;
+let emotion=totalScore>75?"Extreme Panic":totalScore>50?"High Stress":totalScore>30?"Moderate Stress":"Calm";
+
+let condition="General Distress";
+if(/blood|kan|bleeding|sangre|خون/i.test(text)) condition="Bleeding Injury";
+if(/trapped|enkaz|atrapado|محاصر|intrappolato|困|застрял/i.test(text)) condition="Trapped Under Debris";
+
+let vulnerability="Normal";
+if(/child|çocuk|बच्चा|niño|طفل|bambino|孩子|ребенок|아이|子供|Kind|criança/i.test(text)) vulnerability="Child";
+if(/elder|yaşlı|مسن|anciano|anziano|老人|пожилой|노인|高齢者|Älterer|idoso/i.test(text)) vulnerability="Elderly";
+if(condition=="Bleeding Injury") vulnerability="Injured";
+
+let priority=totalScore>80?"CRITICAL":totalScore>60?"HIGH":totalScore>40?"MEDIUM":"LOW";
+let confidence=Math.floor(80+Math.random()*20)+"%";
+
+document.getElementById("emotion").innerText=emotion;
+document.getElementById("condition").innerText=condition;
+document.getElementById("vulnerability").innerText=vulnerability;
+document.getElementById("score").innerText=totalScore+"/100";
+document.getElementById("priority").innerText=priority;
+document.getElementById("confidence").innerText=confidence;
+document.getElementById("stressMeter").style.width=totalScore+"%";
+stressHistory.push(totalScore);
+updateStressGraph();
+addDashboardRow(emotion,condition,vulnerability,priority,totalScore,confidence);
+addHeatmapDot(priority);
+showEmergencyAlert(priority);
+document.getElementById("response").innerText=getMessage(priority);
+}
+
+// Multilingual AI instructions
+function getMessage(priority){
+const lang=currentLang;
+const messages={
+"en-US":{"CRITICAL":"Stay calm. Help is coming immediately.","HIGH":"Remain still and conserve energy.","MEDIUM":"Stay in safe location.","LOW":"Monitor and wait."},
+"tr-TR":{"CRITICAL":"Sakin olun. Yardım hemen geliyor.","HIGH":"Hareket etmeyin ve enerjinizi koruyun.","MEDIUM":"Güvenli bir yerde kalın.","LOW":"Durumu izleyin."},
+"fa-IR":{"CRITICAL":"آرام باشید. کمک فوراً در راه است.","HIGH":"حرکت نکنید و انرژی خود را حفظ کنید.","MEDIUM":"در مکان امن بمانید.","LOW":"وضعیت را کنترل کنید."},
+"fr-FR":{"CRITICAL":"Restez calme. L'aide arrive immédiatement.","HIGH":"Restez immobile et économisez votre énergie.","MEDIUM":"Restez dans un endroit sûr.","LOW":"Surveillez la situation."},
+"hi-IN":{"CRITICAL":"शांत रहें। मदद तुरंत आ रही है।","HIGH":"स्थिर रहें और ऊर्जा बचाएं।","MEDIUM":"सुरक्षित स्थान पर रहें।","LOW":"स्थिति पर नज़र रखें।"},
+"es-ES":{"CRITICAL":"Mantén la calma. La ayuda está en camino.","HIGH":"Permanece quieto y conserva energía.","MEDIUM":"Permanece en un lugar seguro.","LOW":"Monitorea y espera."},
+"ar-SA":{"CRITICAL":"ابق هادئًا. المساعدة في الطريق.","HIGH":"ابق ثابتًا واحتفظ بالطاقة.","MEDIUM":"ابق في مكان آمن.","LOW":"راقب وانتظر."},
+"it-IT":{"CRITICAL":"Rimani calmo. Aiuto in arrivo.","HIGH":"Rimani fermo e conserva energia.","MEDIUM":"Rimani in un luogo sicuro.","LOW":"Monitora la situazione."},
+"zh-CN":{"CRITICAL":"保持冷静。救援正在赶来。","HIGH":"保持静止并节省能量。","MEDIUM":"待在安全的地方。","LOW":"监控并等待。"},
+"ru-RU":{"CRITICAL":"Сохраняйте спокойствие. Помощь уже в пути.","HIGH":"Оставайтесь на месте и экономьте энергию.","MEDIUM":"Находитесь в безопасном месте.","LOW":"Следите за ситуацией."},
+"ko-KR":{"CRITICAL":"침착하세요. 도움은 곧 도착합니다.","HIGH":"가만히 있고 에너지를 절약하세요.","MEDIUM":"안전한 장소에 있으세요.","LOW":"상황을 지켜보세요."},
+"ja-JP":{"CRITICAL":"落ち着いてください。救助が向かっています。","HIGH":"動かずにエネルギーを節約してください。","MEDIUM":"安全な場所にいてください。","LOW":"状況を監視してください。"},
+"de-DE":{"CRITICAL":"Bleiben Sie ruhig. Hilfe ist unterwegs.","HIGH":"Bleiben Sie still und sparen Sie Energie.","MEDIUM":"Bleiben Sie an einem sicheren Ort.","LOW":"Überwachen und warten."},
+"pt-PT":{"CRITICAL":"Mantenha a calma. Ajuda está a caminho.","HIGH":"Permaneça imóvel e conserve energia.","MEDIUM":"Fique em local seguro.","LOW":"Monitorize e aguarde."}
+};
+return messages[lang][priority]||messages["en-US"][priority];
+}
+
+// Dashboard
+function addDashboardRow(emotion,condition,vulnerability,priority,score,confidence){
+const row=document.createElement("tr");
+row.innerHTML=`<td>${callID++}</td><td>${emotion}</td><td>${condition}</td><td>${vulnerability}</td><td>${priority}</td><td>${score}</td><td>${confidence}</td>`;
+document.getElementById("dashboardBody").prepend(row);
+}
+
+// TTS
+function speakResponse(){const msg=new SpeechSynthesisUtterance(document.getElementById("response").innerText); msg.lang=currentLang; speechSynthesis.speak(msg);}
+
+// Stress graph
+const canvas=document.getElementById("stressGraph"); const ctx=canvas.getContext("2d");
+function updateStressGraph(){ctx.clearRect(0,0,canvas.width,canvas.height); if(stressHistory.length==0)return;
+ctx.beginPath(); ctx.moveTo(0,canvas.height-stressHistory[0]*1.5);
+for(let i=1;i<stressHistory.length;i++){ctx.lineTo(i*5,canvas.height-stressHistory[i]*1.5);}
+ctx.strokeStyle="lime"; ctx.lineWidth=2; ctx.stroke();}
+
+// Heatmap
+function addHeatmapDot(priority){
+const dot=document.createElement('div'); dot.className='heatmap-dot';
+if(priority=="CRITICAL") dot.style.background='red';
+else if(priority=="HIGH") dot.style.background='orange';
+else if(priority=="MEDIUM") dot.style.background='yellow';
+else dot.style.background='lime';
+dot.style.left=Math.random()*90+'%'; dot.style.top=Math.random()*90+'%';
+heatmapContainer.appendChild(dot);
+setTimeout(()=>{dot.remove();},5000);
+}
+
+// Animated Emergency Alert
+function showEmergencyAlert(priority){
+const alertBox=document.getElementById('emergencyAlert');
+if(priority=="CRITICAL"){
+alertBox.style.opacity=1;
+setTimeout(()=>{alertBox.style.opacity=0;},3000);
+}
+}
+
+// Init
+initRecognition();
+</script>
+
+</body>
+</html>
